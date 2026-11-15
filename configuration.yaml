@@ -6,6 +6,27 @@
 # mtt section
 
 mqtt:
+  sensor:
+    - name: "xxxxxx OTC Maximum Temperature"
+      unique_id: domusa_xxxxxx_otc_maximum_temperature
+      state_topic: "domusa/xxxxxx/status"
+      value_template: "{{ value_json.max_otc_p08 }}"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      icon: mdi:thermometer-chevron-up
+      
+  # exterior optional sensor Sonda IC - P153=5
+    - name: "xxxxxx OTC Outdoor Temperature"
+      unique_id: domusa_xxxxxx_otc_outdoor_temperature
+      state_topic: "domusa/xxxxxx/status"
+      value_template: "{{ value_json.s_zonaext_c75 }}"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      icon: mdi:thermometer
+    # END exterior optional sensor Sonda IC - P153=5
+
   binary_sensor:
     - name: "xxxxxx DHW Enabled"
       unique_id: domusa_xxxxxx_dhw_enabled
@@ -52,6 +73,15 @@ mqtt:
       payload_off: "OFF"
       icon: mdi:fire
 
+    - name: "xxxxxx Compressor Heating Element"
+      unique_id: domusa_xxxxxx_Compressor_heating_element
+      state_topic: "domusa/xxxxxx/status"
+      value_template: >
+        {% if value_json.salidas_hp_1_c36 | default(false) == true %}ON{% else %}OFF{% endif %}
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: mdi:fire
+
     # Compressor is ON only when actual compressor frequency is above 0 Hz
     - name: "xxxxxx Compressor Enabled"
       unique_id: domusa_xxxxxx_compressor_enabled
@@ -78,7 +108,6 @@ sensor:
     name: "Total Photovoltaics Energy"
     method: left
 
-
 template:
   - sensor:
       - name: "Compressor Demand"
@@ -95,3 +124,9 @@ template:
         device_class: temperature
         state_class: measurement
         availability: >
+          {{ is_number(states('sensor.xxxxxx_flow_temperature'))
+             and is_number(states('sensor.xxxxxx_return_temperature')) }}
+        state: >
+          {% set flow = states('sensor.xxxxxx_flow_temperature') | float %}
+          {% set return_temp = states('sensor.xxxxxx_return_temperature') | float %}
+          {{ (flow - return_temp) | round(1) }}
