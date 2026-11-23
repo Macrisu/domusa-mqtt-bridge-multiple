@@ -15,14 +15,18 @@ class Discovery:
         await self.mqtt.client.publish(topic, json.dumps(payload), retain=True)
 
     @staticmethod
-    def _value_template(key, invalid_values=None):
+    def _value_template(key, invalid_values=None, scale=None):
+        # scale: optional multiplier, e.g. 10 to convert MPa (as reported by the unit) to bar
+        out = "v" if scale is None else f"(v | float * {scale}) | round(2)"
         if invalid_values:
             values = ", ".join(str(v) for v in invalid_values)
             return (
                 f"{{% set v = value_json.{key} %}}"
-                f"{{% if v not in [{values}] %}}{{{{ v }}}}{{% endif %}}"
+                f"{{% if v not in [{values}] %}}{{{{ {out} }}}}{{% endif %}}"
             )
-        return f"{{{{ value_json.{key} }}}}"
+        if scale is None:
+            return f"{{{{ value_json.{key} }}}}"
+        return f"{{% set v = value_json.{key} %}}{{{{ {out} }}}}"
 
     async def publish(self):
         cid = self.device["id"]
@@ -41,7 +45,9 @@ class Discovery:
             # Water circuit
             ("flow_temperature", "Flow Temperature", "s_ida_hp_c08", "°C", "temperature", "mdi:thermometer-chevron-up", "measurement", None),
             ("return_temperature", "Return Temperature", "s_ret_hp_c07", "°C", "temperature", "mdi:thermometer-chevron-down", "measurement", None),
-            ("delta_t", "Flow / Return Delta", "dt_hp_c11", "°C", "temperature", "mdi:delta", "measurement", None),
+            # C11 = suction temperature - evaporation temperature (superheat), NOT flow/return water delta.
+            # unique_id kept as "delta_t" so existing installs keep their entity and history.
+            ("delta_t", "Suction Superheat (C11)", "dt_hp_c11", "°C", "temperature", "mdi:delta", "measurement", None),
             ("active_heating_setpoint", "Active Heating Setpoint", "st_activa_c_f", "°C", "temperature", "mdi:radiator", "measurement", None),
             ("otc_requested_temperature", "OTC Requested Temperature", "st_activa_c_f", "°C", "temperature", "mdi:chart-bell-curve", "measurement", None),
             ("heating_setpoint", "Heating Setpoint", "st_c_p02", "°C", "temperature", "mdi:radiator", "measurement", None),
@@ -78,12 +84,15 @@ class Discovery:
             ("grid_frequency", "Grid Frequency", "e_freq", "Hz", "frequency", "mdi:sine-wave", "measurement", None),
 
             # Pressures
-            ("high_pressure", "High Refrigerant Pressure", "s_pralta_c13", "bar", "pressure", "mdi:gauge-high", "measurement", None),
-            ("low_pressure", "Low Refrigerant Pressure", "s_prbaja_c14", "bar", "pressure", "mdi:gauge-low", "measurement", None),
+            # The unit reports C13/C14 in MPa; converted to bar (x10) so the "bar" unit is correct.
+            ("high_pressure", "High Refrigerant Pressure", "s_pralta_c13", "bar", "pressure", "mdi:gauge-high", "measurement", None, 10),
+            ("low_pressure", "Low Refrigerant Pressure", "s_prbaja_c14", "bar", "pressure", "mdi:gauge-low", "measurement", None, 10),
 
             # Other useful values
             ("water_flow", "Water Flow", "s_q_c10", "L/min", None, "mdi:water", "measurement", None),
-            ("compressor_demand", "Compressor Demand", "pwm_c1_c51", "%", None, "mdi:engine", "measurement", None),
+            # C51 = speed of circulation pump C1, NOT compressor demand.
+            # unique_id kept as "compressor_demand" so existing installs keep their entity and history.
+            ("compressor_demand", "C1 Pump Speed (C51)", "pwm_c1_c51", "%", None, "mdi:pump", "measurement", None),
             ("p06_hysteresis", "P06 Heating/Cooling Hysteresis", "hyst_c_f_p06", "°C", "temperature", "mdi:delta", "measurement", None),
             ("otc_curve", "OTC Curve", "ck_zona1_p154", None, None, "mdi:chart-bell-curve", "measurement", None),
             ("operation_state", "Operation State", "estado_func_c52", None, None, "mdi:state-machine", None, None),
@@ -93,14 +102,16 @@ class Discovery:
             ("sub_alarm_code", "Sub Alarm Code", "sub_alarma", None, None, "mdi:alert-outline", None, None),
         ]
 
-        for uid, friendly_name, key, unit, device_class, icon, state_class, invalid in sensors:
+        for entry in sensors:
+            uid, friendly_name, key, unit, device_class, icon, state_class, invalid = entry[:8]
+            scale = entry[8] if len(entry) > 8 else None
             payload = {
                 "name": friendly_name,
                 "object_id": f"domusa_{cid}_{uid}",
                 "unique_id": f"domusa_{cid}_{uid}",
                 "device": dev_info,
                 "state_topic": status_topic,
-                "value_template": self._value_template(key, invalid),
+                "value_template": self._value_template(key, invalid, scale),
                 "unit_of_measurement": unit,
                 "device_class": device_class,
                 "state_class": state_class,
@@ -121,7 +132,9 @@ class Discovery:
             ("zone_1_demand", "Zone 1 Demand", "demanda_zona1", "mdi:home-thermometer", None),
             ("zone_2_demand", "Zone 2 Demand", "demanda_zona2", "mdi:home-thermometer", None),
             ("zone_3_demand", "Zone 3 Demand", "demanda_zona3", "mdi:home-thermometer", None),
-            ("compressor_enabled", "Compressor Enabled", "m_comp_p40", "mdi:engine", None),
+            # P40 = compressor automatic/manual mode flag, NOT "compressor running".
+            # For running state use freq_c15 > 0 (see configuration.yaml "Compressor Running").
+            ("compressor_enabled", "Compressor Auto Mode (P40)", "m_comp_p40", "mdi:engine", None),
             ("dhw_active", "DHW Active", "m_estadoacs", "mdi:water-boiler", None),
             ("sg_ready", "SG Ready Active", "m_sgready_p201", "mdi:transmission-tower", None),
             ("alarm", "Alarm Active", "alarma", "mdi:alert", "problem"),
