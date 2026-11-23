@@ -83,8 +83,10 @@ mqtt:
       icon: mdi:fire
 
     # Compressor is ON only when actual compressor frequency is above 0 Hz
-    - name: "xxxxxx Compressor Enabled"
-      unique_id: domusa_xxxxxx_compressor_enabled
+    # NOTE: unique_id must differ from the add-on's auto-discovered "domusa_xxxxxx_compressor_enabled"
+    # (that one is P40 = compressor auto mode), otherwise Home Assistant rejects one of them.
+    - name: "xxxxxx Compressor Running"
+      unique_id: domusa_xxxxxx_compressor_running_c15
       state_topic: "domusa/xxxxxx/status"
       value_template: >
         {% if value_json.freq_c15 | float(0) > 0 %}ON{% else %}OFF{% endif %}
@@ -115,8 +117,10 @@ template:
         unit_of_measurement: "%"
         state_class: measurement
         state: >
+          {# Set max_hz equal to your P45 (maximum compressor frequency) #}
+          {% set max_hz = 85 %}
           {% set hz = states('sensor.xxxxxx_compressor_frequency') | float(0) %}
-          {{ [(hz / 85 * 100), 100] | min | round(1) }}
+          {{ [(hz / max_hz * 100), 100] | min | round(1) }}
 
       - name: "Domusa Delta T"
         unique_id: domusa_delta_t

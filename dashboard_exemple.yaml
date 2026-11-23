@@ -24,7 +24,7 @@ views:
                 name: Defrost Active (C33)
               - entity: binary_sensor.xxxxxx_backup_source_active
                 name: Backup Source Active (E2 / C41)
-              - entity: binary_sensor.xxxxxx_compressor_enabled
+              - entity: binary_sensor.xxxxxx_compressor_running
                 name: Compressor
               - entity: binary_sensor.xxxxxx_zone_1_demand
                 name: Zone 1 Demand
@@ -219,7 +219,7 @@ views:
                 name: Defrost Active (C33)
               - entity: binary_sensor.xxxxxx_backup_source_active
                 name: Backup Source Active (E2 / C41)
-              - entity: binary_sensor.xxxxxx_compressor_enabled
+              - entity: binary_sensor.xxxxxx_compressor_running
                 name: Compressor Enabled
               - entity: binary_sensor.xxxxxx_zone_1_demand
                 name: Zone 1 Demand
@@ -261,7 +261,7 @@ views:
             hours_to_show: 24
             refresh_interval: 60
             entities:
-              - entity: binary_sensor.xxxxxx_compressor_enabled
+              - entity: binary_sensor.xxxxxx_compressor_running
                 name: Compressor Enabled
               - entity: sensor.xxxxxx_compressor_frequency
                 name: Frequency
