@@ -55,6 +55,15 @@ poll_interval: 60
 
 *Note: Your credentials are used locally by the add-on to authenticate with the Domusa API and are not shared with any third party.*
 
+## Heat pump guides and monitoring notes
+
+Community notes in [`docs/`](docs/):
+
+- [Dual Clima 16HTT PRO — reference & oversizing (detuning) guide](docs/16HTT-PRO-guide.md): parameters, control logic, detuning settings, E15 findings
+- [OTC heating curves (K values)](docs/OTC-heating-curves.md)
+- [Home Assistant monitoring notes](docs/home-assistant-monitoring.md): what each bridge value means, COP calculation, pitfalls
+- [`ha_heatpump_monitoring.yaml`](docs/ha_heatpump_monitoring.yaml): package for compressor starts and run length (Shelly-based)
+
 ## Home Assistant dashboard example
 
 You can customise your dashboard as you want, but here is an example.

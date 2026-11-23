@@ -1,0 +1,101 @@
+# Home Assistant package — Domusa 16HTT PRO : compressor starts & run length
+# Replace xxxxxx with your installation ID and sensor.shelly_heatpump_total_active_power with your meter's power entity.
+#
+# Source of truth for ON/OFF = a Shelly (e.g. Pro 3EM) total active power on the heat pump supply (updates every few seconds),
+# because the Domusa cloud bridge only polls every ~60 s and blurs short runs.
+#
+# TUNE 400 W: look at sensor.shelly_heatpump_total_active_power history —
+# pick a value above "pump only / standby" and below the lowest compressor power at 35 Hz.
+#
+# Install: configuration.yaml ->  homeassistant: packages: domusa: !include ha_heatpump_monitoring.yaml
+# (or merge the template:/sensor: sections into your existing ones). Restart HA afterwards.
+
+template:
+  - binary_sensor:
+      - name: "HP compressor running"
+        unique_id: hp_compressor_running_shelly
+        state: "{{ states('sensor.shelly_heatpump_total_active_power') | float(0) > 400 }}"
+        delay_on: "00:00:30"
+        delay_off: "00:00:30"
+        icon: mdi:engine
+
+  - sensor:
+      - name: "HP average run length today"
+        unique_id: hp_avg_run_today
+        unit_of_measurement: "min"
+        state_class: measurement
+        icon: mdi:timer-outline
+        state: >
+          {% set h = states('sensor.hp_compressor_hours_today') | float(0) %}
+          {% set n = states('sensor.hp_compressor_starts_today') | float(0) %}
+          {{ (h * 60 / n) | round(1) if n > 0 else 0 }}
+
+      - name: "HP starts per running hour today"
+        unique_id: hp_starts_per_hour_today
+        unit_of_measurement: "starts/h"
+        state_class: measurement
+        icon: mdi:counter
+        state: >
+          {% set n = states('sensor.hp_compressor_starts_today') | float(0) %}
+          {% set hrs = (now() - today_at()).total_seconds() / 3600 %}
+          {{ (n / hrs) | round(2) if hrs > 0.5 else 0 }}
+
+sensor:
+  - platform: history_stats
+    name: "HP compressor starts today"
+    unique_id: hp_compressor_starts_today
+    entity_id: binary_sensor.hp_compressor_running
+    state: "on"
+    type: count
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+
+  - platform: history_stats
+    name: "HP compressor hours today"
+    unique_id: hp_compressor_hours_today
+    entity_id: binary_sensor.hp_compressor_running
+    state: "on"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+
+  - platform: history_stats
+    name: "HP compressor starts 7d"
+    unique_id: hp_compressor_starts_7d
+    entity_id: binary_sensor.hp_compressor_running
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      days: 7
+
+# ---------------------------------------------------------------------------
+# Dashboard card to paste into the "Overview" view (e.g. after the frequency gauge):
+#
+#  - type: entities
+#    title: Cycling (Shelly-based)
+#    show_header_toggle: false
+#    entities:
+#      - entity: binary_sensor.hp_compressor_running
+#        name: Compressor running (Shelly)
+#      - entity: sensor.hp_compressor_starts_today
+#        name: Starts today
+#      - entity: sensor.hp_compressor_hours_today
+#        name: Run hours today
+#      - entity: sensor.hp_average_run_length_today
+#        name: Average run length
+#      - entity: sensor.hp_starts_per_running_hour_today
+#        name: Starts per hour
+#      - entity: sensor.hp_compressor_starts_7d
+#        name: Starts last 7 days
+#  - type: history-graph
+#    title: Compressor runs vs power — last 24 h
+#    hours_to_show: 24
+#    entities:
+#      - entity: binary_sensor.hp_compressor_running
+#      - entity: sensor.shelly_heatpump_total_active_power
+#      - entity: sensor.xxxxxx_compressor_frequency
+#
+# Gauge fix: P45 is now 50 Hz, so change the frequency gauge to
+#   max: 55, severity: {green: 0, yellow: 45, red: 50}
+# ---------------------------------------------------------------------------
