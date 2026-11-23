@@ -1,6 +1,6 @@
 # Domusa Dual Clima 16HTT PRO — key reference & oversizing (detuning) guide
 
-Community notes for an **oversized Dual Clima 16HTT PRO (EC / Easy Connect)** heating a well-insulated house with underfloor heating. The notes are compiled from the Domusa Service Manual (rev. 2, Oct 2026), the Easy Connect installation/operating manual and real operating data logged in Home Assistant with this add-on. The manuals themselves aren't included; get them from Domusa or your installer.
+Community notes for an **oversized Dual Clima 16HTT PRO (EC / Easy Connect)** heating a well-insulated house with underfloor heating. The notes are compiled from the Domusa Service Manual (rev. 2, Oct 2026), the Easy Connect installation/operating manual, Domusa's official COP/capacity sheet, and real operating data logged in Home Assistant with this add-on. The manuals themselves aren't included; get them from Domusa or your installer.
 
 Not affiliated with Domusa. Changing service parameters (passwords 99 / 8563) is at your own risk and can affect warranty. Several parameters below carry manufacturer warnings.
 
@@ -34,7 +34,7 @@ Changes were made with password 8563.
 What the combination does **[Estimate / reasoning from manual logic]**:
 
 - **Soft start.** Each start sits at 35 Hz for about 4 min 40 s (P105/P106), then ramps toward 40 Hz (P104). After that it can rise to at most 50 Hz (P45). Most short runs therefore never leave the 35–40 Hz band. That's gentler, but the unit is no less oversized at the bottom end, because the 35 Hz minimum is unchanged.
-- **Capped output.** 50/85 Hz is about 59 % of the maximum. **[Estimate]** That's roughly 9–10 kW at A7/W35 and noticeably less at −10 to −15 °C. On the coldest days, check that the house still holds temperature. If it doesn't, the E2 backup (P22, default 0 °C, after the P36 15-min delay) or a higher P45 is the fallback.
+- **Capped output.** 50/85 Hz is about 59 % of the maximum. **[Estimate, using the official Domusa capacity table (Domusa HT Pro COP sheet)]** That's roughly 9–11 kW at A7/W35, but only about **5.5–6.5 kW at −15 °C** (the official figure at 85 Hz is 9.30 kW). The estimated house load is about 6–7 kW at −15 °C, so **the cap is probably borderline in a hard frost.** On the first days below about −5 °C, check comfort and whether the gas backup E2 runs. If needed, raise P45 to 60–65 Hz for the cold spell.
 - **Approach and stop.**
   - The modulation band now starts 2 °C below setpoint with a 15 % drop.
   - It slows at 4 Hz/min from setpoint − 0.5 °C.
@@ -262,3 +262,26 @@ Already done (see §0): P06 = 6, P66 = 2, P114 = 15, P45 = 50, soft start (P104/
 5. **DHW.** Set P48 to about 6–7. Watch C13 stay below 29–30 bar and the reheat time stay acceptable. Use night mode or a timed DHW window so DHW and heating don't interleave constantly.
 6. **Room control.** If a room sensor is used, a P117 of 0.5–1.0 °C gives long off-periods. Alternatively, run on OTC alone with all underfloor loops open.
 7. **Leave alone:** P46 (min Hz), EEV, fan, defrost and pressure or current limits, unless a Domusa technician advises otherwise.
+
+---
+
+## 9. When to switch to the gas boiler (E2) [reasoning; prices checked Nov 2026]
+
+**Economic break-even COP** = electricity price × boiler efficiency ÷ gas price.
+
+Romanian household gas is regulated at max **0.31 lei/kWh** until 31 Mar 2027. Electricity offers are roughly 1.0–1.7 lei/kWh all-in. Assuming boiler efficiency 0.92:
+
+| Electricity lei/kWh | Break-even COP | Outdoor temperature where the official W35 COP drops below it |
+|---|---|---|
+| 1.00 | 2.97 | about −13 °C |
+| 1.20 | 3.56 | about −6 °C |
+| 1.50 | 4.45 | about +3 °C |
+
+The actual part-load COP measured at about A2/W33 is 3.7–4.1, and the daily COP 4.7–4.9 at +2…+9 °C. Own PV lowers the effective electricity price.
+
+**Settings:**
+- If the gas is cheaper below the break-even point, a full switch is better than running both together. Use **P81 = 1** (auxiliary: the HP stops and E2 heats below P82), or **P81 = 3** (active combined, for a boiler with its own pump; C1 is off in the auxiliary range). Set **P82 = the break-even outdoor temperature**.
+- Optionally use **P22** a few degrees above P82 as a capacity backup with P81 = 3. The P45 = 50 Hz cap is borderline below about −10 °C.
+- **P36** (15 min) is the delay before E2 can start.
+- ⚠ Check the boiler's hydraulic connection first (parallel/series, own pump), because the right P81 mode depends on it.
+
